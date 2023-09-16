@@ -6,7 +6,7 @@ import numpy as np
 import torch
 
 
-def train(env, agent, path, num_epochs=5000, epsilon=0.1, epsilon_decay=1e-5, min_epsilon=.01):
+def train(env, agent, path, num_epochs=15000, epsilon=0.1, epsilon_decay=1e-7, min_epsilon=.01):
     loop = tqdm(range(num_epochs))
     best_avg_reward = float("-inf")
     rewards_history = []
@@ -19,7 +19,6 @@ def train(env, agent, path, num_epochs=5000, epsilon=0.1, epsilon_decay=1e-5, mi
     for epoch in loop:
         state, info = env.reset(seed=rng.randint(10**6))
         epoch_cum_reward = 0
-        prev_action = 0
         while True:
             if epoch % render_every == 0:
                 img = env.render()
@@ -33,10 +32,6 @@ def train(env, agent, path, num_epochs=5000, epsilon=0.1, epsilon_decay=1e-5, mi
             next_state, reward, done, truncated, info = env.step(action[0])
             next_state = next_state.squeeze()
 
-            # punish big action changes
-            action_delta = abs(action - prev_action)[0][0]
-            # s_reward = reward - 10 * action_delta
-
             agent.update(state, action, reward, next_state, done)
 
             # Update epsilon
@@ -44,7 +39,6 @@ def train(env, agent, path, num_epochs=5000, epsilon=0.1, epsilon_decay=1e-5, mi
 
             epoch_cum_reward += reward
             state = next_state
-            prev_action = action
 
             if done or truncated:
                 break
@@ -68,7 +62,7 @@ def test(env, agent, num_episodes=100):
     rng = np.random.RandomState()
     rng.seed(0) # Set random seed
     cum_reward = 0
-    max_timesteps=200
+    max_timesteps=1000
     for _ in tqdm(range(num_episodes)):
         state, info = env.reset(seed=rng.randint(10**6))
         ep_cum_reward = 0
@@ -88,12 +82,12 @@ def test(env, agent, num_episodes=100):
 
 
 if __name__ == "__main__":
-    env = gym.make("Pendulum-v1", render_mode="rgb_array")
-    agent = DDPGAgent(env, gamma=0.999, alpha=0.0003, actor_lr=0.001, critic_lr=0.001)
+    env = gym.make("Reacher-v4", render_mode="rgb_array")
+    agent = DDPGAgent(env, gamma=0.999, alpha=0.01, actor_lr=0.001, critic_lr=0.001, batch_size=512, update_every=128)
     path = f"{env.spec.id}-{agent.__class__.__name__}"
 
-    train(env, agent, path, epsilon=1., num_epochs=10000, epsilon_decay=2e-6, min_epsilon=0.1)
+    train(env, agent, path, epsilon=1., num_epochs=40000, epsilon_decay=3.5e-7, min_epsilon=0.1)
     agent.load(path)
-    env = gym.make("Pendulum-v1", render_mode="human")
+    env = gym.make("Reacher-v4", render_mode="human")
     test(env, agent)
     agent.display_policy()

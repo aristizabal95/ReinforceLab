@@ -26,19 +26,26 @@ class DDPGAgent(Agent):
 
         self.state_size = env.observation_space.shape[0]
         self.action_size = env.action_space.shape[0]
-        self.memory = MemoryBuffer(2**14)
+        self.memory = MemoryBuffer(2**16)
         self.local_actor = ActorNetwork(self.state_size, self.action_size)
         self.target_actor = deepcopy(self.local_actor)
         self.local_critic = CriticNetwork(self.state_size + self.action_size)
         self.target_critic = deepcopy(self.local_critic)
+        self.loss_fn = nn.MSELoss()
+        self.critic_optimizer = optim.Adam(self.local_critic.parameters(), lr=self.critic_lr, weight_decay=1.e-5)
+        self.actor_optimizer = optim.Adam(self.local_actor.parameters(), lr=self.actor_lr)
 
     def act(self, state, epsilon=0.0):
         state = torch.tensor(state).float().unsqueeze(0)
         action = self.local_actor(state)
 
-        noise = torch.randn_like(action)
-        action += noise
+        noise = 2 * torch.randn_like(action)
+        # action += epsilon * noise
+        if np.random.rand() < epsilon:
+            action = noise
+
         action = torch.clip(action, -2, 2)
+
         return action.detach().numpy()
 
     def update(self, state, action, reward, next_state, done):
@@ -56,9 +63,9 @@ class DDPGAgent(Agent):
         self.step += 1
 
     def update_step(self):
-        loss_fn = nn.MSELoss()
-        critic_optimizer = optim.Adam(self.local_critic.parameters(), lr=self.critic_lr, weight_decay=1.e-5)
-        actor_optimizer = optim.Adam(self.local_actor.parameters(), lr=self.actor_lr)
+        loss_fn = self.loss_fn
+        critic_optimizer = self.critic_optimizer
+        actor_optimizer = self.actor_optimizer
 
         batch = self.memory.sample(self.batch_size)
         states, actions, rewards, next_states, dones = batch
@@ -75,7 +82,7 @@ class DDPGAgent(Agent):
         critic_loss.backward()
         critic_optimizer.step()
 
-        # Update the actor by maximizing the value estimate from the critic
+        # Update the actor critic by maximizing the value estimate from the critic
         pred_actions = self.local_actor(states)
         actor_loss = -self.target_critic(states, pred_actions).mean()
 
@@ -129,11 +136,17 @@ class ActorNetwork(nn.Module):
     def __init__(self, input_size, output_size):
         super(ActorNetwork, self).__init__()
         self.network = nn.Sequential(
-            nn.Linear(input_size, 32),
+            nn.Linear(input_size, 1024),
             nn.ReLU(),
-            nn.Linear(32, 32),
+            nn.Linear(1024, 1024),
             nn.ReLU(),
-            nn.Linear(32, output_size)
+            nn.Linear(1024, 1024),
+            nn.ReLU(),
+            nn.Linear(1024, 256),
+            nn.ReLU(),
+            nn.Linear(256, 128),
+            nn.ReLU(),
+            nn.Linear(128, output_size)
         )
 
     def forward(self, x):
@@ -144,11 +157,17 @@ class CriticNetwork(nn.Module):
     def __init__(self, input_size):
         super(CriticNetwork, self).__init__()
         self.network = nn.Sequential(
-            nn.Linear(input_size, 32),
+            nn.Linear(input_size, 1024),
             nn.ReLU(),
-            nn.Linear(32, 16),
+            nn.Linear(1024, 1024),
             nn.ReLU(),
-            nn.Linear(16, 1)
+            nn.Linear(1024, 1024),
+            nn.ReLU(),
+            nn.Linear(1024, 256),
+            nn.ReLU(),
+            nn.Linear(256, 128),
+            nn.ReLU(),
+            nn.Linear(128, 1)
         )
 
     def forward(self, state, actions):
