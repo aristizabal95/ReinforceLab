@@ -14,3 +14,6 @@ class Experience:
         yield self.reward
         yield self.next_state
         yield self.done
+
+    def __repr__(self):
+        return f"Experience({self.state}, {self.action}, {self.reward}, {self.next_state}, {self.done})"

@@ -1,4 +1,5 @@
 import random
+import numpy as np
 from collections import deque
 
 from reinforcelab.memory_buffers.memory_buffer import MemoryBuffer
@@ -9,6 +10,7 @@ class ExperienceReplay(MemoryBuffer):
     def __init__(self, config):
         self.experience_buffer = deque(maxlen=config['max_size'])
         self.batch_size = config["batch_size"]
+        self.n_steps = config["n_steps"]
         self.transform = None
         if "transform" in config:
             self.transform = config["transform"]
@@ -30,9 +32,9 @@ class ExperienceReplay(MemoryBuffer):
         if len(self) < self.batch_size:
             raise RuntimeError(
                 "There's not enough experience to create a batch")
-        experiences = random.sample(
-            list(self.experience_buffer), self.batch_size)
 
+        batch_idxs = np.random.choice(range(len(self.experience_buffer) - self.n_steps), size=self.batch_size, replace=False)
+        experiences = [[self.experience_buffer[idx+offset] for offset in range(self.n_steps)] for idx in batch_idxs]
         batch = BatchExperience(experiences)
         if self.transform is not None:
             batch = self.transform(batch)
