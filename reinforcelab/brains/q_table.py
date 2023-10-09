@@ -6,11 +6,13 @@ import gymnasium as gym
 
 from .brain import Brain
 from reinforcelab.utils import space_is_type, get_state_action_sizes
+from reinforcelab.estimators import Estimator
 
 
 class QTable(Brain):
-    def __init__(self, env: gym.Env, alpha=0.01):
+    def __init__(self, env: gym.Env, estimator: Estimator, alpha=0.01):
         self.state_size, self.action_size = self.__get_state_action_sizes(env)
+        self.estimator = estimator
         self.alpha = alpha
         self.table = defaultdict(lambda: torch.zeros(self.action_size))
 
@@ -46,16 +48,20 @@ class QTable(Brain):
             return tuple(state_list)
         else:
             return tuple([state_list])
+        
+    def action_value(self, state: Tensor, action: Tensor, target: bool = False) -> Tensor:
+        return self.local(state).gather(1, action).squeeze()
 
-    def update(self, experience, pred, target):
-        state, action, *_ = experience
+    def max_action(self, state: Tensor, target: bool = False) -> Tensor:
+            return self(state).max(dim=1)
+
+    def update(self, experience):
+        states, actions, *_ = experience
+        target, = self.estimator(experience, self)
+        pred = self.local(states).gather(1, actions).squeeze()
         td_error = target - pred
         new_val = pred + self.alpha * td_error
         # Assume that a batch was passed
-        for single_state, single_action, new_single_val in zip(state, action, new_val):
+        for single_state, single_action, new_single_val in zip(states, actions, new_val):
             idx = self.__state2idx(single_state)
             self.table[idx][single_action] = new_single_val
-
-    def update_from(self, brain: "QTable"):
-        # QTables don't need an inter-brain update procedure
-        pass
