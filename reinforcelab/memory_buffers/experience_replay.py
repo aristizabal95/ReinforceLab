@@ -29,7 +29,7 @@ class ExperienceReplay(MemoryBuffer):
         Returns:
             (BatchExperience): A batch of experiences
         """
-        if len(self) < self.batch_size:
+        if len(self) < self.batch_size + self.n_steps:
             raise RuntimeError(
                 "There's not enough experience to create a batch")
 

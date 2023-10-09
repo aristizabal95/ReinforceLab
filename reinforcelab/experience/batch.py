@@ -19,9 +19,9 @@ class BatchExperience(Experience):
         self.state = torch.vstack([n_steps[0].state for n_steps in self.experiences])
         self.done = torch.tensor(self.vdone_getter(self.experiences).max(1))
         self.action = torch.vstack([n_steps[0].action for n_steps in self.experiences])
-        self.reward = torch.tensor([exp.reward for exp in self.experiences]).float()
-        self.next_state = torch.vstack([exp.next_state for exp in self.experiences]).float()
-        self.done = torch.vstack([exp.done for exp in self.experiences]).float()
+        self.reward = torch.tensor(self.vreward_getter(self.experiences)).float()
+        self.next_state = torch.vstack([exp.next_state for exp in self.experiences[self.le_mask]]).float()
+        self.done = torch.tensor(self.vdone_getter(self.experiences))
 
     def __last_experience_idx(self):
         batch_size, n_steps = self.experiences.shape
