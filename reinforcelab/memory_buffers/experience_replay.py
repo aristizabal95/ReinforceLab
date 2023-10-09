@@ -34,7 +34,10 @@ class ExperienceReplay(MemoryBuffer):
                 "There's not enough experience to create a batch")
 
         batch_idxs = np.random.choice(range(len(self.experience_buffer) - self.n_steps), size=self.batch_size, replace=False)
-        experiences = [[self.experience_buffer[idx+offset] for offset in range(self.n_steps)] for idx in batch_idxs]
+        if self.n_steps:
+            experiences = [[self.experience_buffer[idx+offset] for offset in range(self.n_steps)] for idx in batch_idxs]
+        else:
+            experiences = [[self.experience_buffer[idx]] for idx in batch_idxs]
         batch = BatchExperience(experiences)
         if self.transform is not None:
             batch = self.transform(batch)

@@ -5,7 +5,7 @@ from torch.nn import Module
 import numpy as np
 import gymnasium as gym
 
-from reinforcelab.experience import Experience
+from reinforcelab.experience import Experience, BatchExperience
 from reinforcelab.utils import space_is_type
 from reinforcelab.brains import Brain
 from .estimator import Estimator
@@ -28,12 +28,16 @@ class DoubleQEstimator(Estimator):
             Tensor: Double Q Value estimation for the given experience and policy
         """
 
+        gamma = self.gamma
+        if isinstance(experience, BatchExperience):
+            gamma = experience.to_td0(self.gamma)
+
         states, actions, rewards, next_states, dones, *_ = experience
 
         with torch.no_grad():
             # Implement DQN
             max_actions = brain.max_action(next_states).unsqueeze(1)
             max_vals = brain.action_value(next_states, max_actions, target=True).squeeze()
-            target = rewards + self.gamma * max_vals * (1-dones)
+            target = rewards + gamma * max_vals * (1-dones)
 
         return target

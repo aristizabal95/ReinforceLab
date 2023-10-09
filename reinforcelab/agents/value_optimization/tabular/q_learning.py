@@ -16,10 +16,10 @@ class QLearning(Agent):
     experience replay, so they learn from the immediate experience.
     """
 
-    def __init__(self, env: Env, discount_factor: float = 0.999, alpha=0.01):
+    def __init__(self, env: Env, discount_factor: float = 0.999, alpha=0.01, n_steps=0):
         action_selector = EpsilonGreedy(env)
         estimator = MaxQEstimator(env, discount_factor)
         brain = QTable(env, estimator, alpha=alpha)
-        buffer = OrderedBuffer({"batch_size": 1, "max_size": 1})
+        buffer = OrderedBuffer({"batch_size": 1, "max_size": 1, "n_steps": n_steps})
 
         super().__init__(brain, action_selector, buffer)

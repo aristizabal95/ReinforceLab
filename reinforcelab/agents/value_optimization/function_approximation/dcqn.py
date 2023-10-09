@@ -17,12 +17,12 @@ class DCQN(Agent):
     procedure.
     """
 
-    def __init__(self, env: Env, model: nn.Module, learning_rate=0.01, discount_factor: float = 0.999, alpha=0.03, batch_size=128, update_every=4, max_buffer_size=2**12):
+    def __init__(self, env: Env, model: nn.Module, learning_rate=0.01, discount_factor: float = 0.999, alpha=0.03, batch_size=128, update_every=4, max_buffer_size=2**12, n_steps=0):
         action_selector = EpsilonGreedy(env)
         icm = IntrinsicCuriosityModule(
             env, 4, learning_rate=0.0001, state_transform_hidden_layers=[4, 4])
         buffer = ExperienceReplay(
-            {"batch_size": batch_size, "max_size": max_buffer_size, "transform": icm})
+            {"batch_size": batch_size, "max_size": max_buffer_size, "transform": icm, "n_steps": n_steps})
         estimator = MaxQEstimator(env, discount_factor)
         brain = QNetwork(model, estimator, learning_rate, alpha)
 

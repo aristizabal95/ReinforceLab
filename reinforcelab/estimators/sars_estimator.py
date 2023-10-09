@@ -4,7 +4,7 @@ from torch import Tensor
 import gymnasium as gym
 
 from .estimator import Estimator
-from reinforcelab.experience import Experience
+from reinforcelab.experience import Experience, BatchExperience
 from reinforcelab.brains import Brain
 from reinforcelab.utils import space_is_type
 
@@ -29,6 +29,9 @@ class SARSEstimator(Estimator):
         Returns:
             Tensor: SARSA Value estimation for the given experience
         """
+        gamma = self.gamma
+        if isinstance(experience, BatchExperience):
+            gamma = experience.to_td0(self.gamma)
 
         states, actions, rewards, next_states, dones, *_ = experience
         # Generate the next actions according to the current policy
@@ -37,6 +40,6 @@ class SARSEstimator(Estimator):
             # Implement SARSA
             next_actions = brain.target(next_states)
             next_vals = brain.action_value(next_states, next_actions, target=True)
-        target = rewards + self.gamma * next_vals * (1-dones)
+        target = rewards + gamma * next_vals * (1-dones)
 
         return target

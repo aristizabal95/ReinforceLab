@@ -4,7 +4,7 @@ from torch import Tensor
 import gymnasium as gym
 
 from .estimator import Estimator
-from reinforcelab.experience import Experience
+from reinforcelab.experience import Experience, BatchExperience
 from reinforcelab.brains import Brain
 from reinforcelab.utils import space_is_type
 
@@ -34,11 +34,15 @@ class MaxQEstimator(Estimator):
         if self.transforms:
             experience = self.transforms(experience)
 
+        gamma = self.gamma
+        if isinstance(experience, BatchExperience):
+            gamma = experience.to_td0(self.gamma)
+
         states, actions, rewards, next_states, dones, *_ = experience
 
         with torch.no_grad():
             # Implement DQN
             max_vals = brain.max_action(next_states, target=True).values
-            target = rewards.squeeze() + self.gamma * max_vals * (1-dones.squeeze())
+            target = rewards.squeeze() + gamma * max_vals * (1-dones.squeeze())
 
         return target

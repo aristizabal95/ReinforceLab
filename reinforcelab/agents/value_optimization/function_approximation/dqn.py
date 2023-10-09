@@ -16,12 +16,12 @@ class DQN(Agent):
     procedure.
     """
 
-    def __init__(self, env: Env, model: nn.Module, learning_rate=0.01, discount_factor: float = 0.999, alpha=0.03, batch_size=128, update_every=4, max_buffer_size=2**12):
+    def __init__(self, env: Env, model: nn.Module, learning_rate=0.01, discount_factor: float = 0.999, alpha=0.03, batch_size=128, update_every=4, max_buffer_size=2**12, n_steps=0):
         action_selector = EpsilonGreedy(env)
         estimator = MaxQEstimator(env, discount_factor)
         brain = QNetwork(model, estimator, learning_rate=learning_rate, alpha=alpha)
         buffer = ExperienceReplay(
-            {"batch_size": batch_size, "max_size": max_buffer_size})
+            {"batch_size": batch_size, "max_size": max_buffer_size, "n_steps": n_steps})
 
         super().__init__(brain,
                          action_selector, buffer, update_every=update_every)

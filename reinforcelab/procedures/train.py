@@ -41,7 +41,7 @@ class Train:
                 action = action.reshape((-1)).numpy()
                 next_state, reward, done, truncated, info = env.step(action)
                 experience = Experience(
-                    state, action, reward, next_state, done)
+                    state, action, reward, next_state, done, truncated)
                 agent.update(experience)
 
                 epoch_cum_reward += reward
