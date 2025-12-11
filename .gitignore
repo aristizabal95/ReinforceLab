@@ -10,3 +10,6 @@ checkpoints
 test_ppo_gae
 notebooks
 Pusher-DDPG
+
+# Build artifacts
+build/
