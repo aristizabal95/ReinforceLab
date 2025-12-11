@@ -2,6 +2,7 @@ import os
 import shutil
 import yaml
 import pathlib
+import inspect
 from dataclasses import dataclass, field
 from typing import List, Optional
 
@@ -34,8 +35,14 @@ class RLCompetition:
     def add_phase(self, phase: PhaseConfig):
         self.phases.append(phase)
         
-    def build(self, build_dir="./build"):
-        builder = CompetitionBuilder(self, build_dir)
+    def build(self, build_dir="./build", override_dir: Optional[str] = None):
+        # If no override_dir specified, use the caller's directory
+        if override_dir is None:
+            caller_frame = inspect.stack()[1]
+            caller_file = caller_frame.filename
+            override_dir = str(pathlib.Path(caller_file).parent)
+        
+        builder = CompetitionBuilder(self, build_dir, override_dir)
         builder.run()
 
 # ==========================
@@ -43,17 +50,31 @@ class RLCompetition:
 # ==========================
 
 class CompetitionBuilder:
-    def __init__(self, config: RLCompetition, build_dir: str):
+    def __init__(self, config: RLCompetition, build_dir: str, override_dir: str):
         self.config = config
         self.build_dir = build_dir
         self.bundle_dir = os.path.join(build_dir, "bundle")
         self.kit_dir = os.path.join(build_dir, "public_kit")
         self.template_dir = pathlib.Path(__file__).parent / "templates"
+        self.override_dir = pathlib.Path(override_dir)
+
+    def _get_template_path(self, filename: str) -> Optional[pathlib.Path]:
+        """Get the path to a template file, checking override_dir first."""
+        # First check if an override exists in the competition folder
+        override_path = self.override_dir / filename
+        if override_path.exists():
+            return override_path
+        # Fall back to the default templates
+        template_path = self.template_dir / filename
+        if template_path.exists():
+            return template_path
+        return None
 
     def _read_template(self, filename: str) -> str:
-        path = self.template_dir / filename
-        if not path.exists():
-            return "" 
+        """Read a template file, with override_dir taking precedence."""
+        path = self._get_template_path(filename)
+        if path is None:
+            return ""
         return path.read_text()
 
     def _write_file(self, dest_path: str, content: str):
@@ -225,10 +246,10 @@ class CompetitionBuilder:
         with open(os.path.join(self.bundle_dir, "competition.yaml"), "w") as f:
             yaml.dump(yaml_content, f, sort_keys=False)
 
-        # 7. Copy Logo
-        logo_src = self.template_dir / "logo.png"
-        if logo_src.exists():
-            shutil.copy(logo_src, os.path.join(self.bundle_dir, "logo.png"))
+        # 7. Copy Logo (check override_dir first)
+        logo_path = self._get_template_path("logo.png")
+        if logo_path:
+            shutil.copy(logo_path, os.path.join(self.bundle_dir, "logo.png"))
 
         # 8. Create Sample Solution (Random Agent)
         solution_dir = os.path.join(self.bundle_dir, "solution")
