@@ -6,3 +6,7 @@ __pycache__
 *.npy
 *.pth
 checkpoints
+
+test_ppo_gae
+notebooks
+Pusher-DDPG
