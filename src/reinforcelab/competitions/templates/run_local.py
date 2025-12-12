@@ -9,7 +9,7 @@ ENV_ID = "___ENV_ID___"
 def test_manual():
     print(f"--- Running Local Test on {ENV_ID} ---")
     env = gym.make(ENV_ID)
-    agent = Agent()
+    agent = Agent(env)
     
     # Try to load model if exists
     try:

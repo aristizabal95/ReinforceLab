@@ -29,7 +29,6 @@ class RLCompetition:
     title: str
     description: str
     docker_image: str = "codalab/codalab-legacy:py37"
-    pip_requirements: List[str] = field(default_factory=list)
     phases: List[PhaseConfig] = field(default_factory=list)
     
     def add_phase(self, phase: PhaseConfig):
@@ -54,7 +53,7 @@ class CompetitionBuilder:
         self.config = config
         self.build_dir = build_dir
         self.bundle_dir = os.path.join(build_dir, "bundle")
-        self.kit_dir = os.path.join(build_dir, "public_kit")
+        self.starting_kit_dir = os.path.join(self.bundle_dir, "starting_kit")
         self.template_dir = pathlib.Path(__file__).parent / "templates"
         self.override_dir = pathlib.Path(override_dir)
 
@@ -98,7 +97,6 @@ class CompetitionBuilder:
 
     def run(self):
         self._build_bundle()
-        self._build_public_kit()
         print(f"Build Complete. Upload '{os.path.abspath(self.bundle_dir)}.zip' to CodaBench.")
 
     def _build_bundle(self):
@@ -232,6 +230,7 @@ class CompetitionBuilder:
                     ]
                 }
             ],
+            "starting_kit": "starting_kit",
             "tasks": tasks_list,
             "phases": phases_list,
             "solutions": [
@@ -291,21 +290,72 @@ class CompetitionBuilder:
         terms_content = self._read_template("terms.md")
         self._write_file(os.path.join(pages_dir, "terms.md"), terms_content)
         
-        # 10. Zip Bundle
+        # 10. Build Starting Kit (inside bundle)
+        self._build_starting_kit()
+        
+        # 11. Zip Bundle
         shutil.make_archive(os.path.join(self.build_dir, "bundle"), 'zip', self.bundle_dir)
 
-    def _build_public_kit(self):
-        # (Standard Public Kit generation)
-        if os.path.exists(self.kit_dir): shutil.rmtree(self.kit_dir)
-        
-        self._write_file(os.path.join(self.kit_dir, "agent.py"), self._read_template("agent.py"))
-        self._write_file(os.path.join(self.kit_dir, "monitor.py"), self._read_template("monitor.py"))
+    def _build_starting_kit(self):
+        """Build the starting kit folder inside the bundle."""
+        os.makedirs(self.starting_kit_dir, exist_ok=True)
         
         default_env = self.config.phases[0].env_id if self.config.phases else "CartPole-v1"
-        run_local_code = self._render("run_local.py", {"ENV_ID": default_env})
-        self._write_file(os.path.join(self.kit_dir, "run_local.py"), run_local_code)
-
-        reqs = ["gymnasium", "numpy"] + self.config.pip_requirements
-        self._write_file(os.path.join(self.kit_dir, "requirements.txt"), "\n".join(reqs))
+        env_name = default_env.split('-')[0] if '-' in default_env else default_env
+        competition_title = f"ReinforceLab: {env_name} Competition"
         
-        shutil.make_archive(os.path.join(self.build_dir, "public_kit"), 'zip', self.kit_dir)
+        # Copy logo to starting kit
+        logo_path = self._get_template_path("logo.png")
+        if logo_path:
+            shutil.copy(logo_path, os.path.join(self.starting_kit_dir, "logo.png"))
+        
+        # Agent template and random agent implementation
+        self._write_file(
+            os.path.join(self.starting_kit_dir, "agent.py"),
+            self._read_template("agent.py")
+        )
+        self._write_file(
+            os.path.join(self.starting_kit_dir, "random_agent.py"),
+            self._read_template("solution_random_agent.py")
+        )
+        self._write_file(
+            os.path.join(self.starting_kit_dir, "monitor.py"),
+            self._read_template("monitor.py")
+        )
+        
+        # Run local script with environment configured
+        run_local_code = self._render("run_local.py", {"ENV_ID": default_env})
+        self._write_file(os.path.join(self.starting_kit_dir, "run_local.py"), run_local_code)
+
+        # Requirements (read from template or competition override)
+        requirements_content = self._read_template("requirements.txt")
+        self._write_file(os.path.join(self.starting_kit_dir, "requirements.txt"), requirements_content)
+        
+        # Sample submission folder with example agent and checkpoint
+        sample_dir = os.path.join(self.starting_kit_dir, "sample_submission")
+        os.makedirs(sample_dir, exist_ok=True)
+        self._write_file(
+            os.path.join(sample_dir, "agent.py"),
+            self._read_template("sample_submission_agent.py")
+        )
+        self._write_file(
+            os.path.join(sample_dir, "checkpoint.txt"),
+            self._read_template("sample_checkpoint.txt")
+        )
+        self._write_file(
+            os.path.join(sample_dir, "requirements.txt"),
+            requirements_content
+        )
+        # Create zip of sample submission for easy upload
+        shutil.make_archive(
+            os.path.join(self.starting_kit_dir, "sample_submission"),
+            'zip',
+            sample_dir
+        )
+        
+        # Getting started notebook with environment and title configured
+        notebook_content = self._render("getting_started.ipynb", {
+            "ENV_ID": default_env,
+            "TITLE": competition_title
+        })
+        self._write_file(os.path.join(self.starting_kit_dir, "getting_started.ipynb"), notebook_content)

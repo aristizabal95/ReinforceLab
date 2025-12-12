@@ -3,7 +3,6 @@ from reinforcelab.competitions.builder import RLCompetition, PhaseConfig
 comp = RLCompetition(
     title="My Structured RL Comp",
     description="A cleaner implementation.",
-    pip_requirements=["gymnasium", "numpy"]
 )
 
 comp.add_phase(PhaseConfig(
