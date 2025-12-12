@@ -1,16 +1,16 @@
 """
-Random Agent Solution - Sample Submission for ReinforceLab Competitions
+Random Agent - Baseline Submission for ReinforceLab Competitions
 
 This agent takes random actions from the environment's action space.
 It serves as a baseline and demonstrates the expected interface.
 
 Your submission should have an agent.py file with an Agent class that implements:
-- act(observation): Returns an action given an observation
-- train(env): Trains the agent using the provided environment
-- load(path): Loads model weights from a file (optional for Phase 1)
-- save(path): Saves model weights to a file (optional)
+- __init__(env): Initialize with the environment
+- act(observation): Return an action given an observation
+- train(): Train the agent using self.env
+- load(): Load your model (optional - you decide how)
+- save(): Save your model (optional - you decide how)
 """
-import numpy as np
 import gymnasium as gym
 
 
@@ -23,7 +23,7 @@ class Agent:
     """
     
     def __init__(self, env: gym.Env):
-        """Initialize the agent."""
+        """Initialize the agent with the environment."""
         self.env = env
 
     def act(self, observation):
@@ -38,19 +38,13 @@ class Agent:
         """
         return self.env.action_space.sample()
 
-    def train(self, env: gym.Env):
+    def train(self):
         """
-        Train the agent on the environment.
+        Train the agent using self.env.
         
         For a random agent, we don't actually learn anything.
-        We just run episodes until convergence is detected or max steps reached.
-        
-        Args:
-            env: The gymnasium environment to train on.
-                 The environment is wrapped to track convergence.
+        We just run episodes until the monitor signals to stop.
         """
-        # Run episodes until the environment signals to stop
-        # The wrapped environment will raise StopIteration when converged
         try:
             while True:
                 obs, _ = self.env.reset()
@@ -63,27 +57,22 @@ class Agent:
             # Training complete - convergence reached or max steps hit
             pass
     
-    def load(self, path: str):
+    def load(self):
         """
-        Load model weights from a file.
+        Load model weights.
         
-        For a random agent, there's nothing to load.
-        
-        Args:
-            path: Path to the model file.
+        Random agent has no weights to load.
+        In your implementation, load your model here, e.g.:
+            self.model = torch.load('model.pt')
         """
-        # Random agent has no weights to load
         pass
     
-    def save(self, path: str):
+    def save(self):
         """
-        Save model weights to a file.
+        Save model weights.
         
-        For a random agent, there's nothing to save.
-        
-        Args:
-            path: Path where the model should be saved.
+        Random agent has no weights to save.
+        In your implementation, save your model here, e.g.:
+            torch.save(self.model.state_dict(), 'model.pt')
         """
-        # Random agent has no weights to save
         pass
-
