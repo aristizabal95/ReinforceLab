@@ -300,9 +300,20 @@ class CompetitionBuilder:
         """Build the starting kit folder inside the bundle."""
         os.makedirs(self.starting_kit_dir, exist_ok=True)
         
-        default_env = self.config.phases[0].env_id if self.config.phases else "CartPole-v1"
+        # Extract phase configuration
+        eval_phase = next((p for p in self.config.phases if p.phase_type == 'evaluation'), None)
+        conv_phase = next((p for p in self.config.phases if p.phase_type == 'convergence'), None)
+        
+        default_env = eval_phase.env_id if eval_phase else (conv_phase.env_id if conv_phase else "CartPole-v1")
         env_name = default_env.split('-')[0] if '-' in default_env else default_env
         competition_title = f"ReinforceLab: {env_name} Competition"
+        
+        # Phase configuration with defaults
+        num_episodes = eval_phase.num_episodes if eval_phase else 100
+        goal_reward = conv_phase.goal_reward if conv_phase else 0.0
+        stability_window = conv_phase.stability_window if conv_phase else 100
+        max_steps = conv_phase.max_steps if conv_phase else 100000
+        num_runs = conv_phase.num_runs if conv_phase else 5
         
         # Copy logo to starting kit
         logo_path = self._get_template_path("logo.png")
@@ -323,9 +334,23 @@ class CompetitionBuilder:
             self._read_template("monitor.py")
         )
         
-        # Run local script with environment configured
-        run_local_code = self._render("run_local.py", {"ENV_ID": default_env})
+        # Run local script with full phase configuration
+        run_local_code = self._render("run_local.py", {
+            "ENV_ID": default_env,
+            "NUM_EPISODES": str(num_episodes),
+            "GOAL_REWARD": str(goal_reward),
+            "STABILITY_WINDOW": str(stability_window),
+            "MAX_STEPS": str(max_steps),
+            "NUM_RUNS": str(num_runs)
+        })
         self._write_file(os.path.join(self.starting_kit_dir, "run_local.py"), run_local_code)
+        
+        # Training script with environment and goal configured
+        train_code = self._render("train.py", {
+            "ENV_ID": default_env,
+            "GOAL_REWARD": str(goal_reward)
+        })
+        self._write_file(os.path.join(self.starting_kit_dir, "train.py"), train_code)
 
         # Requirements (read from template or competition override)
         requirements_content = self._read_template("requirements.txt")
